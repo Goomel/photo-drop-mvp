@@ -1,0 +1,24 @@
+'use client';
+import {useCallback, Dispatch, SetStateAction} from 'react'
+import {useDropzone} from 'react-dropzone'
+
+function Dropzone({setFiles}: {setFiles: Dispatch<SetStateAction<File[]>>}) {
+  const onDrop = useCallback((files: File[]) => {
+    setFiles(prevFiles => [...prevFiles, ...files])
+  }, [])
+  
+  const {getRootProps, getInputProps, isDragActive} = useDropzone({onDrop})
+
+  return (
+    <div {...getRootProps()} className="border border-gray-400 p-10 rounded-2xl w-full max-w-lg mx-auto">
+      <input {...getInputProps()} />
+      {
+          isDragActive ?
+          <p>Drop the files here ...</p> :
+          <p>Drag 'n' drop some files here, or click to select files</p>
+        }
+    </div>
+  )
+}
+
+export default Dropzone;

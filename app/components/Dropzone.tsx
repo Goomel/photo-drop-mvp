@@ -1,10 +1,10 @@
 'use client';
-import {useCallback, Dispatch, SetStateAction} from 'react'
+import {useCallback} from 'react'
 import {useDropzone} from 'react-dropzone'
 
-function Dropzone({setFiles}: {setFiles: Dispatch<SetStateAction<File[]>>}) {
+function Dropzone({handleUpload}: {handleUpload: (files: File[]) => void}) {
   const onDrop = useCallback((files: File[]) => {
-    setFiles(prevFiles => [...prevFiles, ...files])
+    handleUpload(files)
   }, [])
   
   const {getRootProps, getInputProps, isDragActive} = useDropzone({onDrop})

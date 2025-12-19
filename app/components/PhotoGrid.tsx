@@ -11,7 +11,7 @@ export default function PhotoGrid({files}: {files: File[]}){
         key={index}
         className="relative w-full aspect-square rounded-lg overflow-hidden"
       >
-        <img className="object-cover" key={index} src={previewUrl} alt={file.name} />
+        <img className="w-full h-full object-cover" key={index} src={previewUrl} alt={file.name} />
       </div>
     );
   })}

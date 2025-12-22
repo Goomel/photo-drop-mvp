@@ -1,0 +1,27 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+model Album {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String?
+  eventDate   DateTime?
+  uploadUntil DateTime?
+  viewUntil   DateTime?
+  createdAt   DateTime  @default(now())
+  photos      Photo[]
+}
+
+model Photo {
+  id        String   @id @default(cuid())
+  albumId   String
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  s3Key     String
+  createdAt DateTime @default(now())
+}

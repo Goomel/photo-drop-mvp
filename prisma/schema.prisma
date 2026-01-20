@@ -1,10 +1,10 @@
-datasource db {
-  provider = "postgresql"
-}
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
 }
 
 model Album {
@@ -21,7 +21,7 @@ model Album {
 model Photo {
   id        String   @id @default(cuid())
   albumId   String
-  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
   s3Key     String
   createdAt DateTime @default(now())
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
 }

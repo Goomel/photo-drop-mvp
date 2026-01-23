@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { UploadStatus } from "@/app/types";
 import Dropzone from "./Dropzone";
 import PhotoGrid from "./PhotoGrid";
-import axios from "axios";
+import { createAlbum } from "@/app/actions";
 
 export default function FileUploader() {
   const [files, setFiles] = useState<File[]>([]);
@@ -20,26 +20,7 @@ export default function FileUploader() {
     setStatus("uploading");
     setUploadProgress(0);
 
-    const formData = new FormData();
-    files.forEach((file, index) => {
-      formData.append(`file${index}`, file);
-    });
-
-    try {
-      await axios.post("https://httpbin.org/post", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(progress);
-          }
-        },
-      });
-    } catch (error) {
-      console.error(error);
-    }
+    await createAlbum({ slug: "test", title: "test" });
   };
 
   return (

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { UploadStatus } from "@/app/types";
 import Dropzone from "./Dropzone";
 import PhotoGrid from "./PhotoGrid";
-import { createAlbum } from "@/app/actions";
+import { createAlbum, addPhotosToAlbum } from "@/app/actions";
 
 export default function FileUploader() {
   const [files, setFiles] = useState<File[]>([]);
@@ -20,7 +20,8 @@ export default function FileUploader() {
     setStatus("uploading");
     setUploadProgress(0);
 
-    await createAlbum({ slug: "test", title: "test" });
+    // const album = await createAlbum({ slug: "test", title: "test" });
+    await addPhotosToAlbum({ albumSlug: "test", photosData: files.map((file) => ({ name: file.name, s3Key: "" })) });
   };
 
   return (

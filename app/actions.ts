@@ -21,3 +21,29 @@ export async function createAlbum({ slug, title }: { slug: string; title: string
     },
   });
 }
+
+export async function addPhotosToAlbum({
+  albumSlug,
+  photosData,
+}: {
+  albumSlug: string;
+  photosData: { name: string; s3Key: string }[];
+}) {
+  try {
+    const album = await prisma.album.findUnique({ where: { slug: albumSlug } });
+
+    if (!album) {
+      throw new Error("Album not found");
+    }
+    return await prisma.photo.createMany({
+      data: photosData.map((photo) => ({
+        albumId: album.id,
+        photoName: photo.name,
+        s3Key: photo.s3Key,
+      })),
+    });
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}

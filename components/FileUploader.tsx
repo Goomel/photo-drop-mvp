@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { UploadStatus } from "@/app/types";
 import Dropzone from "./Dropzone";
 import PhotoGrid from "./PhotoGrid";
-import { createAlbum, addPhotosToAlbum } from "@/app/actions";
+import { createAlbum, addPhotosToAlbum, getPresignedUrls } from "@/app/actions";
 
 export default function FileUploader() {
   const [files, setFiles] = useState<File[]>([]);
@@ -21,7 +21,23 @@ export default function FileUploader() {
     setUploadProgress(0);
 
     // const album = await createAlbum({ slug: "test", title: "test" });
-    await addPhotosToAlbum({ albumSlug: "test", photosData: files.map((file) => ({ name: file.name, s3Key: "" })) });
+    const fileInfo = files.map((file) => ({ name: file.name, type: file.type }));
+    const presignedData = await getPresignedUrls(fileInfo);
+
+    const uploadPromises = files.map(async (file, index) => {
+      const { url, s3Key } = presignedData[index];
+
+      await fetch(url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+
+      return { name: file.name, s3Key };
+    });
+    const uploadedPhotos = await Promise.all(uploadPromises);
+    console.log("uploadedPhotos", uploadedPhotos);
+    await addPhotosToAlbum({ albumSlug: "test", photosData: uploadedPhotos });
   };
 
   return (

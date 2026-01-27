@@ -1,6 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { s3Client } from "@/lib/s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuidv4 } from "uuid";
 
 export async function createAlbum({ slug, title }: { slug: string; title: string }) {
   let uniqueSlug = slug;
@@ -46,4 +50,24 @@ export async function addPhotosToAlbum({
     console.error(error);
     throw error;
   }
+}
+
+export async function getPresignedUrls(files: { name: string; type: string }[]) {
+  const urls = await Promise.all(
+    files.map(async (file) => {
+      const s3Key = `${uuidv4()}-${file.name}`;
+
+      const command = new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: s3Key,
+        ContentType: file.type,
+      });
+
+      const url = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+
+      return { url, s3Key, originalName: file.name };
+    })
+  );
+
+  return urls;
 }

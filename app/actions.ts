@@ -55,7 +55,8 @@ export async function addPhotosToAlbum({
 export async function getPresignedUrls(files: { name: string; type: string }[]) {
   const urls = await Promise.all(
     files.map(async (file) => {
-      const s3Key = `${uuidv4()}-${file.name}`;
+      // for testing purpose we use always one folder
+      const s3Key = `${process.env.TEST_FOLDER_ID}/${uuidv4()}-${file.name}`;
 
       const command = new PutObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME,

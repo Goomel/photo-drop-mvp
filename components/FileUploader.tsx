@@ -20,7 +20,6 @@ export default function FileUploader() {
     setStatus("uploading");
     setUploadProgress(0);
 
-    // const album = await createAlbum({ slug: "test", title: "test" });
     const fileInfo = files.map((file) => ({ name: file.name, type: file.type }));
     const presignedData = await getPresignedUrls(fileInfo);
 
@@ -36,7 +35,6 @@ export default function FileUploader() {
       return { name: file.name, s3Key };
     });
     const uploadedPhotos = await Promise.all(uploadPromises);
-    console.log("uploadedPhotos", uploadedPhotos);
     await addPhotosToAlbum({ albumSlug: "test", photosData: uploadedPhotos });
   };
 

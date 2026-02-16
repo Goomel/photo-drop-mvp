@@ -2,8 +2,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { s3Client } from "@/lib/s3";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
 
 export async function createAlbum({ slug, title }: { slug: string; title: string }) {
@@ -26,15 +27,15 @@ export async function createAlbum({ slug, title }: { slug: string; title: string
   });
 }
 
-export async function addPhotosToAlbum({
-  albumSlug,
-  photosData,
-}: {
-  albumSlug: string;
-  photosData: { name: string; s3Key: string }[];
-}) {
+export async function addPhotoRecordsToAlbum({ photosData }: { photosData: { name: string; s3Key: string }[] }) {
+  // for testing purpose we use always one folder
+  const albumId = process.env.TEST_ALBUM_ID;
+  // if (!albumId) {
+  //   throw new Error("Album ID is required");
+  // }
+
   try {
-    const album = await prisma.album.findUnique({ where: { slug: albumSlug } });
+    const album = await prisma.album.findUnique({ where: { id: albumId } });
 
     if (!album) {
       throw new Error("Album not found");
@@ -56,7 +57,7 @@ export async function getPresignedUrls(files: { name: string; type: string }[]) 
   const urls = await Promise.all(
     files.map(async (file) => {
       // for testing purpose we use always one folder
-      const s3Key = `${process.env.TEST_FOLDER_ID}/${uuidv4()}-${file.name}`;
+      const s3Key = `${process.env.TEST_ALBUM_ID}/${uuidv4()}__${file.name}`;
 
       const command = new PutObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME,
@@ -71,4 +72,28 @@ export async function getPresignedUrls(files: { name: string; type: string }[]) 
   );
 
   return urls;
+}
+
+export async function getPhotos(albumId: string) {
+  const album = await prisma.album.findUnique({
+    where: { id: albumId },
+    include: { photos: true },
+  });
+
+  if (!album) {
+    return [];
+  }
+
+  const photosWithUrls = await Promise.all(
+    album.photos.map(async (photo) => {
+      const command = new GetObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: photo.s3Key,
+      });
+      const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+      return { id: photo.id, photoName: photo.photoName, url };
+    })
+  );
+
+  return photosWithUrls;
 }

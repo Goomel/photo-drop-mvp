@@ -3,11 +3,9 @@
 import { useState } from "react";
 import type { UploadStatus } from "@/app/types";
 import Dropzone from "./Dropzone";
-import PhotoGrid from "./PhotoGrid";
-import { createAlbum, addPhotosToAlbum, getPresignedUrls } from "@/app/actions";
+import { addPhotoRecordsToAlbum, getPresignedUrls } from "@/app/actions";
 
 export default function FileUploader() {
-  const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
@@ -16,7 +14,6 @@ export default function FileUploader() {
       return;
     }
 
-    setFiles(files);
     setStatus("uploading");
     setUploadProgress(0);
 
@@ -35,13 +32,12 @@ export default function FileUploader() {
       return { name: file.name, s3Key };
     });
     const uploadedPhotos = await Promise.all(uploadPromises);
-    await addPhotosToAlbum({ albumSlug: "test", photosData: uploadedPhotos });
+    await addPhotoRecordsToAlbum({ photosData: uploadedPhotos });
   };
 
   return (
     <div className="max-w-7xl mx-auto flex flex-col items-center gap-16 lg:gap-20">
       <Dropzone handleUpload={uploadFiles} />
-      {files.length > 0 && <PhotoGrid files={files} />}
       {status === "uploading" && (
         <div className="w-full max-w-lg mx-auto">
           <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">

@@ -28,35 +28,53 @@ export async function createAlbum({ slug, title }: { slug: string; title: string
 }
 
 export async function addPhotoRecordsToAlbum({ photosData }: { photosData: { name: string; s3Key: string }[] }) {
-  // for testing purpose we use always one folder
   const albumId = process.env.TEST_ALBUM_ID;
-  // if (!albumId) {
-  //   throw new Error("Album ID is required");
-  // }
 
   try {
     const album = await prisma.album.findUnique({ where: { id: albumId } });
+    if (!album) throw new Error("Album not found");
 
-    if (!album) {
-      throw new Error("Album not found");
-    }
-    return await prisma.photo.createMany({
-      data: photosData.map((photo) => ({
-        albumId: album.id,
-        photoName: photo.name,
-        s3Key: photo.s3Key,
-      })),
-    });
+    const savedPhotos = await Promise.all(
+      photosData.map((photo) =>
+        prisma.photo.create({
+          data: {
+            albumId: album.id,
+            photoName: photo.name,
+            s3Key: photo.s3Key,
+          },
+        })
+      )
+    );
+
+    // 2. Generate signed URLs for the newly created photos
+    const photosWithUrls = await Promise.all(
+      savedPhotos.map(async (photo) => {
+        const command = new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: photo.s3Key,
+        });
+        const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+
+        return {
+          id: photo.id,
+          photoName: photo.photoName,
+          url,
+        };
+      })
+    );
+
+    // Return the new photo objects so the client can append them to the local state
+    return photosWithUrls;
   } catch (error) {
-    console.error(error);
+    console.error("Database error during photo creation:", error);
     throw error;
   }
 }
 
-export async function getPresignedUrls(files: { name: string; type: string }[]) {
+export async function generateUploadUrls(files: { name: string; type: string }[]) {
   const urls = await Promise.all(
     files.map(async (file) => {
-      // for testing purpose we use always one folder
+      // For testing purpose we use always one folder
       const s3Key = `${process.env.TEST_ALBUM_ID}/${uuidv4()}__${file.name}`;
 
       const command = new PutObjectCommand({

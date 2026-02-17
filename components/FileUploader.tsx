@@ -1,50 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import type { UploadStatus } from "@/app/types";
+import { addPhotoRecordsToAlbum, generateUploadUrls } from "@/app/actions";
 import Dropzone from "./Dropzone";
-import { addPhotoRecordsToAlbum, getPresignedUrls } from "@/app/actions";
 
-export default function FileUploader() {
-  const [status, setStatus] = useState<UploadStatus>("idle");
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
+interface FileUploaderProps {
+  onUploadComplete: (newPhotos: any[]) => void;
+}
+
+export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
+  const [status, setStatus] = useState<"idle" | "uploading">("idle");
 
   const uploadFiles = async (files: File[]) => {
-    if (files.length === 0) {
-      return;
-    }
+    if (files.length === 0) return;
 
     setStatus("uploading");
-    setUploadProgress(0);
 
-    const fileInfo = files.map((file) => ({ name: file.name, type: file.type }));
-    const presignedData = await getPresignedUrls(fileInfo);
+    try {
+      const fileInfo = files.map((f) => ({ name: f.name, type: f.type }));
+      const presignedData = await generateUploadUrls(fileInfo);
 
-    const uploadPromises = files.map(async (file, index) => {
-      const { url, s3Key } = presignedData[index];
-
-      await fetch(url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
+      const uploadPromises = files.map(async (file, index) => {
+        const { url, s3Key } = presignedData[index];
+        await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+        return { name: file.name, s3Key };
       });
 
-      return { name: file.name, s3Key };
-    });
-    const uploadedPhotos = await Promise.all(uploadPromises);
-    await addPhotoRecordsToAlbum({ photosData: uploadedPhotos });
+      const uploadedPhotos = await Promise.all(uploadPromises);
+
+      // Call server action and get the full photo objects (with IDs and URLs)
+      const savedPhotos = await addPhotoRecordsToAlbum({ photosData: uploadedPhotos });
+
+      // Update the parent's state directly
+      onUploadComplete(savedPhotos);
+    } catch (error) {
+      console.error("Upload process failed:", error);
+    } finally {
+      setStatus("idle");
+    }
   };
 
   return (
-    <div className="max-w-7xl mx-auto flex flex-col items-center gap-16 lg:gap-20">
+    <div className="max-w-7xl mx-auto flex flex-col items-center gap-10">
       <Dropzone handleUpload={uploadFiles} />
-      {status === "uploading" && (
-        <div className="w-full max-w-lg mx-auto">
-          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-          </div>
-        </div>
-      )}
+      {status === "uploading" && <p className="text-blue-400">Processing images...</p>}
     </div>
   );
 }
